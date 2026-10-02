@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+# Helper script to remember how to apply the system config
+
+cd "${0:A:h}/.."
+
+nix develop --command apply-nix-darwin-configuration
