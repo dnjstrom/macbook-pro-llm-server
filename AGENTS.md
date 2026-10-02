@@ -10,6 +10,10 @@ MacBook Pro serving Ollama to the homelab over Tailscale. See the
   boring, self-healing, observable changes over clever ones.
 - Everything runs as a launchd **daemon**, never an agent. Nothing may depend
   on a user being logged in.
+- Define daemons with `command` or `script`, never with a raw
+  `serviceConfig.ProgramArguments` that points into `/nix/store`. Only the
+  former get nix-darwin's `wait4path /nix/store` wrapper. Without it, a daemon
+  that launches before the Nix volume is mounted at boot fails and stays down.
 - Ollama stays bound to loopback. Don't expose it on the LAN; the tailnet ACL
   is its only access control. Keep the Caddy `Host` rewrite (see README).
 - Scope is chat only. Don't add tool calling, MCP servers or agent frameworks

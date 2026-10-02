@@ -44,7 +44,12 @@ in
     localHostName = hostname;
   };
 
-  environment.systemPackages = [ ollama ];
+  environment.systemPackages = [
+    ollama
+    # macOS only ships a stub that asks to install the Xcode tools, which
+    # can't even be done over SSH. Needed for `git pull` when updating.
+    pkgs.git
+  ];
 
   # ─── Unattended operation ───────────────────────────────────────────────
 
@@ -93,11 +98,12 @@ in
     RunAtLoad = true;
   };
 
+  # Daemons start via `command` (or `script`), never raw ProgramArguments:
+  # nix-darwin then wraps them in `wait4path /nix/store`. /nix is a separate
+  # volume mounted during boot, and a daemon launched before it exists fails
+  # to spawn and is not retried.
+  launchd.daemons.ollama.command = "${ollama}/bin/ollama serve";
   launchd.daemons.ollama.serviceConfig = {
-    ProgramArguments = [
-      "${ollama}/bin/ollama"
-      "serve"
-    ];
     EnvironmentVariables = {
       HOME = home; # Models are stored under ~/.ollama/models
       OLLAMA_HOST = "127.0.0.1:${toString ollamaPort}";
@@ -112,34 +118,29 @@ in
     StandardErrorPath = "${logDir}/ollama.log";
   };
 
-  launchd.daemons.ollama-proxy.serviceConfig = {
-    ProgramArguments = [
-      "${pkgs.caddy}/bin/caddy"
-      "run"
-      "--adapter"
-      "caddyfile"
-      "--config"
-      (toString (
-        pkgs.writeText "Caddyfile" ''
-          {
-            admin off
-            auto_https off
-            persist_config off
-          }
+  launchd.daemons.ollama-proxy.command =
+    let
+      caddyfile = pkgs.writeText "Caddyfile" ''
+        {
+          admin off
+          auto_https off
+          persist_config off
+        }
 
-          # No hostname in the site address: it must match whatever Host
-          # tailscale serve forwards. `bind` is what keeps it loopback-only.
-          http://:${toString proxyPort} {
-            bind 127.0.0.1
-            reverse_proxy 127.0.0.1:${toString ollamaPort} {
-              header_up Host localhost
-              # Stream tokens as they are generated.
-              flush_interval -1
-            }
+        # No hostname in the site address: it must match whatever Host
+        # tailscale serve forwards. `bind` is what keeps it loopback-only.
+        http://:${toString proxyPort} {
+          bind 127.0.0.1
+          reverse_proxy 127.0.0.1:${toString ollamaPort} {
+            header_up Host localhost
+            # Stream tokens as they are generated.
+            flush_interval -1
           }
-        ''
-      ))
-    ];
+        }
+      '';
+    in
+    "${pkgs.caddy}/bin/caddy run --adapter caddyfile --config ${caddyfile}";
+  launchd.daemons.ollama-proxy.serviceConfig = {
     EnvironmentVariables.HOME = home;
     UserName = username;
     RunAtLoad = true;
