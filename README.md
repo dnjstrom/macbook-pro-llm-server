@@ -1,5 +1,24 @@
 # MacBook Pro LLM server
 
+> **Decommissioned 2026-10-30.** The MacBook has been repurposed as a personal
+> laptop. LLM serving moved onto `server`, as
+> [`services/ollama`](https://github.com/dnjstrom/homelab/tree/main/services/ollama)
+> in the homelab repo, at `https://ollama.<tailnet>.ts.net`.
+>
+> That host has a third of the memory bandwidth of this one (single-channel
+> DDR5 against the M3 Pro's ~150 GB/s) and shares it with every other service,
+> so it serves a 2.3 GB `qwen3:4b-instruct-2507-q4_K_M` rather than the 17.3 GB
+> `qwen3:30b-a3b` below. The reasoning is in that service's README.
+>
+> Nothing points here any more. The `llm` tailnet node is **not** deleted
+> automatically — it is untagged and user-owned, so the homelab OAuth client
+> cannot retire it. Delete it by hand in the
+> [admin console](https://login.tailscale.com/admin/machines), and run
+> `sudo tailscale logout` on the machine itself.
+>
+> This repo is kept as the record of how it worked, and as the thing to come
+> back to if a dedicated box is ever worth it again.
+
 Configures a spare 36 GB MacBook Pro as an unattended local LLM server for the
 [homelab](https://github.com/dnjstrom/homelab), using
 [nix-darwin](https://github.com/nix-darwin/nix-darwin) and
